@@ -8,12 +8,22 @@ $(function () {
       $("#collapsable-nav").collapse("hide");
     }
   });
+
+  // In Firefox and Safari, the click event doesn't retain the focus
+  // on the clicked button. Therefore, the blur event will not fire on
+  // user clicking somewhere else in the page and the blur event handler
+  // which is set up above will not be called.
+  // Refer to issue #28 in the repo.
+  // Solution: force focus on the element that the click event fired on
+  $("#navbarToggle").click(function (event) {
+    $(event.target).focus();
+  });
 });
 
 (function (global) {
   var dc = {};
 
-  var homeHtmlUrl = "snippets/home-snippet.html";
+  var homeHtml = "snippets/home-snippet.html";
   var allCategoriesUrl =
     "https://coursera-jhu-default-rtdb.firebaseio.com/categories.json";
   var categoriesTitleHtml = "snippets/categories-title-snippet.html";
@@ -44,58 +54,18 @@ $(function () {
     return string;
   };
 
-  // Remove the class 'active' from home and switch to Menu button
-  var switchMenuToActive = function () {
-    // Remove 'active' from home button
-    var classes = document.querySelector("#navHomeButton").className;
-    classes = classes.replace(new RegExp("active", "g"), "");
-    document.querySelector("#navHomeButton").className = classes;
-
-    // Add 'active' to menu button if not already there
-    classes = document.querySelector("#navMenuButton").className;
-    if (classes.indexOf("active") === -1) {
-      classes += " active";
-      document.querySelector("#navMenuButton").className = classes;
-    }
-  };
-
   // On page load (before images or CSS)
   document.addEventListener("DOMContentLoaded", function (event) {
-    // *** start ***
     // On first load, show home view
     showLoading("#main-content");
-    $ajaxUtils.sendGetRequest(allCategoriesUrl, buildAndShowHomeHTML, true); // Explicitly setting the flag to get JSON from server processed into an object literal
-  });
-  // *** finish **
-
-  // Builds HTML for the home page based on categories array
-  // returned from the server.
-  function buildAndShowHomeHTML(categories) {
-    // Load home snippet page
     $ajaxUtils.sendGetRequest(
-      homeHtmlUrl,
-      function (homeHtml) {
-        var chosenCategoryShortName =
-          chooseRandomCategory(categories).short_name;
-        var homeHtmlToInsertIntoMainPage = insertProperty(
-          homeHtml,
-          "randomCategoryShortName",
-          "'" + chosenCategoryShortName + "'"
-        );
-        insertHtml("#main-content", homeHtmlToInsertIntoMainPage);
+      homeHtml,
+      function (responseText) {
+        document.querySelector("#main-content").innerHTML = responseText;
       },
       false
-    ); // False here because we are getting just regular HTML from the server, so no need to process JSON.
-  }
-
-  // Given array of category objects, returns a random category object.
-  function chooseRandomCategory(categories) {
-    // Choose a random index into the array (from 0 inclusively until array length (exclusively))
-    var randomArrayIndex = Math.floor(Math.random() * categories.length);
-
-    // return category object with that randomArrayIndex
-    return categories[randomArrayIndex];
-  }
+    );
+  });
 
   // Load the menu categories view
   dc.loadMenuCategories = function () {
@@ -124,9 +94,6 @@ $(function () {
         $ajaxUtils.sendGetRequest(
           categoryHtml,
           function (categoryHtml) {
-            // Switch CSS class active to menu button
-            switchMenuToActive();
-
             var categoriesViewHtml = buildCategoriesViewHtml(
               categories,
               categoriesTitleHtml,
@@ -177,9 +144,6 @@ $(function () {
         $ajaxUtils.sendGetRequest(
           menuItemHtml,
           function (menuItemHtml) {
-            // Switch CSS class active to menu button
-            switchMenuToActive();
-
             var menuItemsViewHtml = buildMenuItemsViewHtml(
               categoryMenuItems,
               menuItemsTitleHtml,
@@ -239,7 +203,7 @@ $(function () {
       html = insertProperty(html, "description", menuItems[i].description);
 
       // Add clearfix after every second menu item
-      if (i % 2 !== 0) {
+      if (i % 2 != 0) {
         html +=
           "<div class='clearfix visible-lg-block visible-md-block'></div>";
       }
